@@ -215,8 +215,70 @@ jhipster:
   security:
     content-security-policy: "default-src 'self'; frame-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://storage.googleapis.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:"
 
-
 # jhipster-needle-add-application-yaml-document
+
+# ===================================================================
+# MCPHub TENANT_DELEGATED integration properties
+# Values are injected from environment variables.
+# MCP_CONTRACT_HMAC_KEY must be a 64-char hex string — never commit it.
+# ===================================================================
+mcp:
+  contract:
+    hmac-key: ${MCP_CONTRACT_HMAC_KEY:}
+    session-ttl-sec: ${MCP_CONTRACT_SESSION_TTL_SEC:3600}
+    auth-code-ttl-sec: ${MCP_CONTRACT_AUTH_CODE_TTL_SEC:60}
+    allowed-callback-hosts: ${MCP_CONTRACT_ALLOWED_CALLBACK_HOSTS:}
+    domain-verification-token: ${MCP_CONTRACT_DOMAIN_VERIFICATION_TOKEN:}
+    # Contract-v2 tool scopes keyed by the Spring authority name (OpenAPI operationIds
+    # from mcp-openapi.yaml). Authorities absent here get an empty scope list.
+    # Bracket notation preserves the literal key (relaxed binding would strip case/underscores).
+    tool-scopes:
+      '[ROLE_ADMIN]':
+        - getAccount
+        - saveAccount
+        - changePassword
+        - getAllUsers
+        - createUser
+        - updateUser
+        - getUser
+        - deleteUser
+        - getAllPublicUsers
+        - getAllBankAccounts
+        - createBankAccount
+        - getBankAccount
+        - updateBankAccount
+        - partialUpdateBankAccount
+        - deleteBankAccount
+        - getAllLabels
+        - createLabel
+        - getLabel
+        - updateLabel
+        - partialUpdateLabel
+        - deleteLabel
+        - getAllOperations
+        - createOperation
+        - getOperation
+        - updateOperation
+        - partialUpdateOperation
+        - deleteOperation
+        - getAllAuthorities
+        - createAuthority
+        - getAuthority
+        - deleteAuthority
+      '[ROLE_USER]':
+        - getAccount
+        - saveAccount
+        - changePassword
+        - getAllUsers
+        - createUser
+        - updateUser
+        - getUser
+        - deleteUser
+      '[ROLE_MANAGER]':
+        - getAccount
+        - saveAccount
+        - changePassword
+        - getAllUsers
 ---
 # ===================================================================
 # Application specific properties

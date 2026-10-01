@@ -1,0 +1,500 @@
+openapi: "3.0.3"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION 1: API METADATA
+# Replace all placeholder values (marked with <>) with your actual values.
+# The title and version appear as-is in the MCP Hub control plane.
+# ─────────────────────────────────────────────────────────────────────────────
+info:
+  title: "<Your Application Name> API"
+  version: "1.0.0"
+  description: |
+    RESTful API for <Your Application Name>.
+    Authentication is via Keycloak JWT Bearer token forwarded by MCP Hub (TOKEN_FORWARDING mode).
+
+    Role-based access:
+    - <role_1>: <what this role can do, e.g., "all operations">
+    - <role_2>: <what this role can do, e.g., "read and write own resources">
+    - <role_3>: <what this role can do, e.g., "read-only access to assigned resources">
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION 2: SERVER BASE URL
+# This becomes the baseUrl for your Connection in MCP Hub.
+# Use your production URL here. For local dev/testing, use localhost.
+# Only one server entry is used — the first one.
+# ─────────────────────────────────────────────────────────────────────────────
+servers:
+  - url: "https://<your-app-domain.com>"
+    description: "<Your Application Name> — production"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION 3: SECURITY SCHEMES
+# Do not change this block. MCP Hub uses TOKEN_FORWARDING mode —
+# it injects the user's Keycloak JWT as a Bearer token on every request.
+# Your Spring Boot app's McpHubAuthFilter handles validation automatically
+# via the mcpsai-auth-spring-boot-starter.
+# ─────────────────────────────────────────────────────────────────────────────
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Keycloak JWT Bearer token. MCP Hub forwards the user's Keycloak access token
+        as `Authorization: Bearer <jwt>`. The mcpsai-auth Spring Boot filter validates
+        and maps it to the correct SecurityContext automatically.
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # SECTION 4: REUSABLE SCHEMAS
+  # Define your domain models here using JSON Schema.
+  # Keep schemas flat where possible — deeply nested schemas still work but
+  # produce more complex tool input schemas in the MCP Hub.
+  #
+  # Rules:
+  # - Always define an Error schema exactly as shown below (required by MCP Hub error handling)
+  # - Mark all required fields explicitly with the `required` array
+  # - Use correct `format` hints: date-time, email, uuid — these improve AI tool usage
+  # - Avoid $ref circular references — the parser handles them but may produce incomplete schemas
+  # ───────────────────────────────────────────────────────────────────────────
+  schemas:
+
+    # Always include this — used by all error responses
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    # ── Replace with your domain model ──────────────────────────────────────
+    # Example: an "Order" entity in an e-commerce app, a "Patient" in healthcare, etc.
+    <YourPrimaryEntity>:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: "Unique identifier (UUID)"
+        # Add your domain-specific fields below:
+        # fieldName:
+        #   type: string | integer | boolean | object | array
+        #   description: "Clear description — this feeds into AI tool descriptions"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # ── Add more schemas as needed ───────────────────────────────────────────
+    <YourSecondaryEntity>:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        # ... your fields
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Apply bearerAuth globally — all endpoints require authentication
+# ─────────────────────────────────────────────────────────────────────────────
+security:
+  - bearerAuth: []
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION 5: PATHS (API ENDPOINTS)
+#
+# CRITICAL RULES FOR TOOL NAMING:
+# - Every operation MUST have a unique `operationId`
+# - operationId becomes the tool name suffix: {appSlug}_{operationId}
+# - Use camelCase: listOrders, getOrderById, createOrder, updateOrder, deleteOrder
+# - Bad examples: getItem, create, doThing — too generic, hurts AI tool discovery
+# - Good examples: listPatientRecords, approveLeaveRequest, generateInvoice
+#
+# CRITICAL RULES FOR DESCRIPTIONS:
+# - `summary` is the one-line label shown in the MCP Hub UI
+# - `description` feeds the AI tool's discovery text — be specific about:
+#     (a) what data is returned/modified
+#     (b) which roles can call it
+#     (c) any important constraints or gotchas
+#
+# STANDARD CRUD PATTERN (replicate for each resource):
+#   GET    /api/{resources}         → list<Resources>
+#   POST   /api/{resources}         → create<Resource>
+#   GET    /api/{resources}/{id}    → get<Resource>ById
+#   PUT    /api/{resources}/{id}    → update<Resource>       (full update)
+#   PATCH  /api/{resources}/{id}    → patch<Resource>        (partial update)
+#   DELETE /api/{resources}/{id}    → delete<Resource>
+# ─────────────────────────────────────────────────────────────────────────────
+paths:
+
+  # ── RESOURCE 1: Collection endpoints ──────────────────────────────────────
+  /api/<resources>:
+
+    get:
+      operationId: list<Resources>
+      tags: [<ResourceTag>]
+      summary: "List <resources> (role-scoped)"
+      description: |
+        Returns a list of <resources> filtered by the caller's role:
+        - **<role_1>**: all <resources> in the system
+        - **<role_2>**: only <resources> they own or are assigned to
+        - **<role_3>**: only <resources> relevant to them
+
+        **IMPORTANT:** Always use this endpoint to list <resources>.
+        Never call get<Resource>ById without a real database ID.
+      security:
+        - bearerAuth: []
+      # Optional query parameters — add only if your endpoint supports filtering
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, inactive, pending]
+          description: "Filter by status (optional)"
+        # Add more query params as needed:
+        # - name: page
+        #   in: query
+        #   required: false
+        #   schema:
+        #     type: integer
+        #     default: 0
+        # - name: size
+        #   in: query
+        #   required: false
+        #   schema:
+        #     type: integer
+        #     default: 20
+      responses:
+        "200":
+          description: "Array of <resources>"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/<YourPrimaryEntity>"
+        "401":
+          description: "Unauthorized — no valid session"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: "Forbidden — insufficient role"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      operationId: create<Resource>
+      tags: [<ResourceTag>]
+      summary: "Create a new <resource> (<role_1> / <role_2> only)"
+      description: |
+        Creates a new <resource>. Requires <role_1> or <role_2> role.
+        <Add any other important constraints, e.g., "Title and description are required.">
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [<requiredField1>, <requiredField2>]
+              properties:
+                <requiredField1>:
+                  type: string
+                  description: "Clear description of this field"
+                <requiredField2>:
+                  type: string
+                  description: "Clear description of this field"
+                <optionalField>:
+                  type: string
+                  description: "Optional — describe when/why to use it"
+      responses:
+        "201":
+          description: "<Resource> created successfully"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/<YourPrimaryEntity>"
+        "400":
+          description: "Validation error — check required fields"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: "Unauthorized"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: "Forbidden — <role_1> or <role_2> role required"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: "Conflict — <resource> already exists (if applicable)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ── RESOURCE 1: Item endpoints (by ID) ────────────────────────────────────
+  /api/<resources>/{id}:
+
+    # ── Shared path parameter — applies to all operations on this path ───────
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: "<Resource> UUID. Must be a real database ID — never pass keywords or placeholders."
+        description: "Unique <resource> identifier (UUID format only)"
+
+    get:
+      operationId: get<Resource>ById
+      tags: [<ResourceTag>]
+      summary: "Get a single <resource> by ID"
+      description: |
+        Returns a <resource> by its unique UUID.
+        Access is role-scoped:
+        - **<role_1>**: any <resource>
+        - **<role_2>**: only their own <resources>
+        - **<role_3>**: only <resources> they are associated with
+
+        **IMPORTANT:** The `id` must be a real UUID from the database.
+        To list all <resources>, use list<Resources> (GET /api/<resources>) instead.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: "<Resource> detail"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/<YourPrimaryEntity>"
+        "400":
+          description: "Invalid ID format — must be a valid UUID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: "Unauthorized"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: "Forbidden — not associated with this <resource>"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: "<Resource> not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    patch:
+      operationId: update<Resource>
+      tags: [<ResourceTag>]
+      summary: "Partially update a <resource> (owner / <role_1>)"
+      description: |
+        Updates one or more fields of a <resource>.
+        - **<role_2>**: can update only their own <resources>
+        - **<role_1>**: can update any <resource>, including restricted fields
+
+        At least one field must be provided in the request body.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                <field1>:
+                  type: string
+                  description: "Updated value for <field1>"
+                <field2>:
+                  type: string
+                  description: "Updated value for <field2>"
+                <adminOnlyField>:
+                  type: string
+                  description: "<role_1>-only: <explain what this field controls>"
+      responses:
+        "200":
+          description: "<Resource> updated"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/<YourPrimaryEntity>"
+        "400":
+          description: "Invalid ID format or no fields provided"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: "Unauthorized"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: "Forbidden — must own the <resource> or be <role_1>"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: "<Resource> not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      operationId: delete<Resource>
+      tags: [<ResourceTag>]
+      summary: "Delete a <resource> (owner / <role_1>)"
+      description: |
+        Permanently deletes a <resource>.
+        <Describe any cascade effects, e.g., "Also deletes all associated <child resources>.">
+        - **<role_2>**: can only delete their own <resources>
+        - **<role_1>**: can delete any <resource>
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: "<Resource> deleted"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        "400":
+          description: "Invalid ID format"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: "Unauthorized"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: "Forbidden — must own the <resource> or be <role_1>"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: "<Resource> not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ── RESOURCE 2 (Relationship/junction endpoint example) ───────────────────
+  # Use this pattern for resources that link two entities (e.g., assignments, enrollments, memberships)
+  /api/<secondary-resources>:
+
+    post:
+      operationId: create<SecondaryResource>
+      tags: [<SecondaryResourceTag>]
+      summary: "Link a <EntityA> to a <EntityB> (<role_1> only)"
+      description: |
+        Creates a <SecondaryResource> record linking a <EntityA> to a <EntityB>.
+        Requires <role_1> role.
+        Returns 409 if the link already exists.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [<entityAId>, <entityBId>]
+              properties:
+                <entityAId>:
+                  type: string
+                  format: uuid
+                  description: "UUID of the <EntityA> to link"
+                <entityBId>:
+                  type: string
+                  format: uuid
+                  description: "UUID of the <EntityB> to link"
+      responses:
+        "201":
+          description: "<SecondaryResource> created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/<YourSecondaryEntity>"
+        "400":
+          description: "Validation error — both IDs are required"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: "Unauthorized"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: "Forbidden — <role_1> role required"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: "<EntityA> or <EntityB> not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: "Link already exists"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CHECKLIST BEFORE UPLOADING TO MCP HUB
+#
+# □ Every path operation has a unique, descriptive operationId (camelCase)
+# □ Every operationId is globally unique across the entire spec
+# □ `servers[0].url` matches your app's actual base URL
+# □ All <placeholder> values have been replaced
+# □ Required fields are listed in the `required` array of each schema/requestBody
+# □ Path parameters use format: uuid (or string if your IDs are not UUIDs)
+# □ Descriptions mention which roles can call each endpoint
+# □ No circular $ref references
+# □ Only application/json content type used in requestBody and responses
+# □ The Error schema is present and used in all error responses
+# ─────────────────────────────────────────────────────────────────────────────

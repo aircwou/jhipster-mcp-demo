@@ -3,7 +3,7 @@ function setupProxy({ tls }) {
   return [
     {
       context: serverResources,
-      target: `http${tls ? 's' : ''}://localhost:8080`,
+      target: `http${tls ? 's' : ''}://localhost:8085`,
       secure: false,
       changeOrigin: tls,
     },

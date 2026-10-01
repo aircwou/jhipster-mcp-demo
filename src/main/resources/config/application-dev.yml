@@ -19,11 +19,13 @@ logging:
     tech.jhipster: DEBUG
     org.hibernate.SQL: DEBUG
     io.github.jhipster.sample: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.security.web.access: TRACE
 
 spring:
   devtools:
     restart:
-      enabled: true
+      enabled: false
       additional-exclude: static/**,.h2.server.properties
     livereload:
       enabled: false # we use Webpack dev server + BrowserSync for livereload
@@ -44,7 +46,7 @@ spring:
   h2:
     console:
       # JHipster uses a custom h2-console initializer
-      enabled: true
+      enabled: false
   liquibase:
     # Remove 'faker' if you do not want the sample data to be loaded automatically
     contexts: dev, faker
@@ -57,7 +59,7 @@ spring:
     cache: false
 
 server:
-  port: 8080
+  port: 8085
   # make sure requests the proxy uri instead of the server one
   forward-headers-strategy: native
 

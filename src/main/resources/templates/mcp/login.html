@@ -1,0 +1,142 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sign in</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f0f4f8;
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        font-size: 16px;
+        color: #333;
+      }
+
+      .card {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12);
+        padding: 2.5rem 2rem;
+        width: 100%;
+        max-width: 400px;
+      }
+
+      h1 {
+        margin: 0 0 0.25rem;
+        font-size: 1.5rem;
+        font-weight: 600;
+      }
+
+      .subtitle {
+        margin: 0 0 1.5rem;
+        font-size: 0.9rem;
+        color: #666;
+      }
+
+      label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin-bottom: 0.35rem;
+        margin-top: 1rem;
+      }
+
+      input[type='email'],
+      input[type='password'] {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+
+      input[type='email']:focus,
+      input[type='password']:focus {
+        border-color: #3e8acc;
+      }
+
+      button[type='submit'] {
+        margin-top: 1.5rem;
+        width: 100%;
+        padding: 0.65rem;
+        background: #3e8acc;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+
+      button[type='submit']:hover {
+        background: #2d6fa8;
+      }
+
+      .error-card {
+        background: #fff3f3;
+        border: 1px solid #f5c6cb;
+        border-radius: 8px;
+        padding: 2rem;
+        max-width: 400px;
+        text-align: center;
+      }
+
+      .error-card h1 {
+        color: #c0392b;
+      }
+    </style>
+  </head>
+  <body>
+    <!--/* Error page — shown when callback_url or code_challenge_method is invalid */-->
+    <div class="error-card" th:if="${errorMessage != null}">
+      <h1>Access Denied</h1>
+      <p th:text="${errorMessage}">An error occurred.</p>
+    </div>
+
+    <!--/* Login form — shown when all parameters are valid */-->
+    <div class="card" th:if="${errorMessage == null}">
+      <h1>Sign in</h1>
+      <p class="subtitle" th:if="${tenantSlug != null and !#strings.isEmpty(tenantSlug)}">
+        Signing in to: <strong th:text="${tenantSlug}"></strong>
+      </p>
+
+      <form method="POST" th:action="@{/api/mcp/login}">
+        <input type="hidden" name="callback_url" th:value="${callbackUrl}" />
+        <input type="hidden" name="state" th:value="${state}" />
+        <input type="hidden" name="code_challenge" th:value="${codeChallenge}" />
+        <input type="hidden" name="code_challenge_method" th:value="${codeChallengeMethod}" />
+        <input type="hidden" name="tenant_slug" th:value="${tenantSlug}" />
+
+        <label for="username">Username</label>
+        <input
+          id="username"
+          type="text"
+          name="username"
+          required
+          autocomplete="username"
+          th:value="${loginHint}"
+          placeholder="your-username"
+        />
+
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" required autocomplete="current-password" placeholder="••••••••" />
+
+        <button type="submit">Sign in</button>
+      </form>
+    </div>
+  </body>
+</html>

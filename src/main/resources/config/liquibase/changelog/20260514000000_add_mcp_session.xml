@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="20260514000000-1" author="mcphub-integration">
+        <createTable tableName="mcp_session">
+            <column name="token" type="varchar(68)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expires_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableName="mcp_session"
+            baseColumnNames="user_id"
+            constraintName="fk_mcp_session_user"
+            referencedTableName="jhi_user"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <createIndex tableName="mcp_session" indexName="idx_mcp_session_user_id">
+            <column name="user_id"/>
+        </createIndex>
+
+        <createIndex tableName="mcp_session" indexName="idx_mcp_session_expires_at">
+            <column name="expires_at"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

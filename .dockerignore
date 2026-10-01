@@ -1,0 +1,12 @@
+# Keep the Docker build context small and free of local state/secrets.
+.git
+.github
+.husky
+.devcontainer
+.kilo
+node_modules
+target
+.env
+.env.*
+!.env.example
+*.log

@@ -1,0 +1,1026 @@
+  openapi: 3.0.3
+  info:
+    title: JHipster Sample App API
+    description: >
+      REST API for the JHipster 9 Spring Boot monolith. Covers self-service
+      account management, admin user management, and BankAccount / Label /
+      Operation CRUD. All endpoints require a JWT Bearer token obtained from
+      the application's login endpoint.
+    version: 1.0.0
+
+  servers:
+    - url: http://localhost:8080
+      description: Local development
+
+  security:
+    - bearerAuth: []
+
+  tags:
+    - name: account
+      description: Self-service account management (ROLE_USER)
+    - name: admin
+      description: Admin user management (ROLE_ADMIN)
+    - name: users
+      description: Public user lookup
+    - name: bankAccounts
+    - name: labels
+      description: Label CRUD (ROLE_USER)
+    - name: operations
+      description: Financial operation CRUD (ROLE_USER)
+    - name: authorities
+      description: Authority / role management (ROLE_ADMIN)
+
+  paths:
+
+    # ── Account (self-service) ──────────────────────────────────────────────────
+
+    /api/account:
+      get:
+        tags: [account]
+        summary: Get the authenticated user's account details
+        operationId: getAccount
+        responses:
+          '200':
+            description: Current user profile
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/AdminUserDTO'
+          '500':
+            description: User could not be found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+      post:
+        tags: [account]
+        summary: Update the authenticated user's account details
+        operationId: saveAccount
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserDTO'
+        responses:
+          '200':
+            description: Account updated
+          '400':
+            description: Validation error
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+          '500':
+            description: User could not be found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+
+    /api/account/change-password:
+      post:
+        tags: [account]
+        summary: Change the authenticated user's password
+        operationId: changePassword
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordChangeDTO'
+        responses:
+          '200':
+            description: Password changed
+          '400':
+            description: Incorrect current password or new password fails constraints
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+
+    # ── Admin – user management ─────────────────────────────────────────────────
+
+    /api/admin/users:
+      get:
+        tags: [admin]
+        summary: List all users (paginated)
+        operationId: getAllUsers
+        parameters:
+          - $ref: '#/components/parameters/Page'
+          - $ref: '#/components/parameters/Size'
+          - $ref: '#/components/parameters/Sort'
+        responses:
+          '200':
+            description: Paginated list of users
+            headers:
+              X-Total-Count:
+                description: Total number of users across all pages
+                schema:
+                  type: integer
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/AdminUserDTO'
+          '400':
+            description: Invalid pagination parameters
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+      post:
+        tags: [admin]
+        summary: Create a new user
+        operationId: createUser
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUserVM'
+        responses:
+          '201':
+            description: User created
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/AdminUserDTO'
+          '400':
+            description: Login or e-mail already in use
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+      put:
+        tags: [admin]
+        summary: Update an existing user
+        operationId: updateUser
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserDTO'
+        responses:
+          '200':
+            description: User updated
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/AdminUserDTO'
+          '400':
+            description: Validation error
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+          '404':
+            description: User not found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+          '409':
+            description: Login already used by another user
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+
+    /api/admin/users/{login}:
+      get:
+        tags: [admin]
+        summary: Get a user by login
+        operationId: getUser
+        parameters:
+          - name: login
+            in: path
+            required: true
+            description: The user's login name
+            schema:
+              type: string
+        responses:
+          '200':
+            description: User found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/AdminUserDTO'
+          '404':
+            description: User not found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+      delete:
+        tags: [admin]
+        summary: Delete a user by login
+        operationId: deleteUser
+        parameters:
+          - name: login
+            in: path
+            required: true
+            description: The user's login name
+            schema:
+              type: string
+        responses:
+          '200':
+            description: User deleted
+
+    # ── Public users ────────────────────────────────────────────────────────────
+
+    /api/users:
+      get:
+        tags: [users]
+        summary: Get a paginated list of public user profiles
+        operationId: getAllPublicUsers
+        parameters:
+          - $ref: '#/components/parameters/Page'
+          - $ref: '#/components/parameters/Size'
+          - $ref: '#/components/parameters/Sort'
+        responses:
+          '200':
+            description: Paginated list of public user profiles
+            headers:
+              X-Total-Count:
+                description: Total number of users
+                schema:
+                  type: integer
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/UserDTO'
+
+    # ── Bank accounts ───────────────────────────────────────────────────────────
+
+    /api/bank-accounts:
+      get:
+        tags: [bankAccounts]
+        summary: List all bank accounts
+        operationId: getAllBankAccounts
+        parameters:
+          - name: eagerload
+            in: query
+            description: Eagerly load associated operations
+            schema:
+              type: boolean
+              default: true
+        responses:
+          '200':
+            description: List of bank accounts
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/BankAccount'
+      post:
+        tags: [bankAccounts]
+        summary: Create a bank account
+        operationId: createBankAccount
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankAccount'
+        responses:
+          '201':
+            description: Bank account created
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/BankAccount'
+          '400':
+            description: Invalid input
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+
+    /api/bank-accounts/{id}:
+      get:
+        tags: [bankAccounts]
+        summary: Get a bank account by ID
+        operationId: getBankAccount
+        parameters:
+          - $ref: '#/components/parameters/BankAccountId'
+        responses:
+          '200':
+            description: Bank account found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/BankAccount'
+          '404':
+            description: Bank account not found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+      put:
+        tags: [bankAccounts]
+        summary: Fully update a bank account
+        operationId: updateBankAccount
+        parameters:
+          - $ref: '#/components/parameters/BankAccountId'
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankAccount'
+        responses:
+          '200':
+            description: Bank account updated
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/BankAccount'
+          '400':
+            description: Validation error or path/body ID mismatch
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+          '404':
+            description: Bank account not found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+          '500':
+            description: Unexpected server error
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+      patch:
+        tags: [bankAccounts]
+        summary: Partially update a bank account (JSON Merge Patch)
+        operationId: partialUpdateBankAccount
+        parameters:
+          - $ref: '#/components/parameters/BankAccountId'
+        requestBody:
+          required: true
+          content:
+            application/merge-patch+json:
+              schema:
+                $ref: '#/components/schemas/BankAccount'
+        responses:
+          '200':
+            description: Bank account partially updated
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/BankAccount'
+          '400':
+            description: Validation error
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+          '404':
+            description: Bank account not found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+      delete:
+        tags: [bankAccounts]
+        summary: Delete a bank account
+        operationId: deleteBankAccount
+        parameters:
+          - $ref: '#/components/parameters/BankAccountId'
+        responses:
+          '204':
+            description: Bank account deleted
+
+    # ── Labels ──────────────────────────────────────────────────────────────────
+
+    /api/labels:
+      get:
+        tags: [labels]
+        summary: List all labels
+        operationId: getAllLabels
+        responses:
+          '200':
+            description: List of labels
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Label'
+      post:
+        tags: [labels]
+        summary: Create a label
+        operationId: createLabel
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Label'
+        responses:
+          '201':
+            description: Label created
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Label'
+          '400':
+            description: Invalid input
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+
+    /api/labels/{id}:
+      get:
+        tags: [labels]
+        summary: Get a label by ID
+        operationId: getLabel
+        parameters:
+          - $ref: '#/components/parameters/EntityId'
+        responses:
+          '200':
+            description: Label found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Label'
+          '404':
+            description: Label not found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+      put:
+        tags: [labels]
+        summary: Fully update a label
+        operationId: updateLabel
+        parameters:
+          - $ref: '#/components/parameters/EntityId'
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Label'
+        responses:
+          '200':
+            description: Label updated
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Label'
+          '400':
+            description: Validation error or path/body ID mismatch
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+          '500':
+            description: Unexpected server error
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+      patch:
+        tags: [labels]
+        summary: Partially update a label (JSON Merge Patch)
+        operationId: partialUpdateLabel
+        parameters:
+          - $ref: '#/components/parameters/EntityId'
+        requestBody:
+          required: true
+          content:
+            application/merge-patch+json:
+              schema:
+                $ref: '#/components/schemas/Label'
+        responses:
+          '200':
+            description: Label partially updated
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Label'
+          '400':
+            description: Validation error
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+          '404':
+            description: Label not found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+      delete:
+        tags: [labels]
+        summary: Delete a label
+        operationId: deleteLabel
+        parameters:
+          - $ref: '#/components/parameters/EntityId'
+        responses:
+          '204':
+            description: Label deleted
+
+    # ── Operations ──────────────────────────────────────────────────────────────
+
+    /api/operations:
+      get:
+        tags: [operations]
+        summary: List all operations (paginated)
+        operationId: getAllOperations
+        parameters:
+          - $ref: '#/components/parameters/Page'
+          - $ref: '#/components/parameters/Size'
+          - $ref: '#/components/parameters/Sort'
+          - name: eagerload
+            in: query
+            description: Eagerly load label associations
+            schema:
+              type: boolean
+              default: true
+        responses:
+          '200':
+            description: Paginated list of operations
+            headers:
+              X-Total-Count:
+                description: Total number of operations
+                schema:
+                  type: integer
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Operation'
+      post:
+        tags: [operations]
+        summary: Create an operation
+        operationId: createOperation
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        responses:
+          '201':
+            description: Operation created
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Operation'
+          '400':
+            description: Invalid input
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+
+    /api/operations/{id}:
+      get:
+        tags: [operations]
+        summary: Get an operation by ID
+        operationId: getOperation
+        parameters:
+          - $ref: '#/components/parameters/EntityId'
+        responses:
+          '200':
+            description: Operation found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Operation'
+          '404':
+            description: Operation not found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+      put:
+        tags: [operations]
+        summary: Fully update an operation
+        operationId: updateOperation
+        parameters:
+          - $ref: '#/components/parameters/EntityId'
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        responses:
+          '200':
+            description: Operation updated
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Operation'
+          '400':
+            description: Validation error or path/body ID mismatch
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+          '500':
+            description: Unexpected server error
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+      patch:
+        tags: [operations]
+        summary: Partially update an operation (JSON Merge Patch)
+        operationId: partialUpdateOperation
+        parameters:
+          - $ref: '#/components/parameters/EntityId'
+        requestBody:
+          required: true
+          content:
+            application/merge-patch+json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        responses:
+          '200':
+            description: Operation partially updated
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Operation'
+          '400':
+            description: Validation error
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+          '404':
+            description: Operation not found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+      delete:
+        tags: [operations]
+        summary: Delete an operation
+        operationId: deleteOperation
+        parameters:
+          - $ref: '#/components/parameters/EntityId'
+        responses:
+          '204':
+            description: Operation deleted
+
+    # ── Authorities ─────────────────────────────────────────────────────────────
+
+    /api/authorities:
+      get:
+        tags: [authorities]
+        summary: List all authority names (ROLE_ADMIN)
+        operationId: getAllAuthorities
+        responses:
+          '200':
+            description: List of all authorities
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Authority'
+      post:
+        tags: [authorities]
+        summary: Create a new authority (ROLE_ADMIN)
+        operationId: createAuthority
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Authority'
+        responses:
+          '201':
+            description: Authority created
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Authority'
+          '400':
+            description: Invalid input or authority already exists
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+
+    /api/authorities/{name}:
+      get:
+        tags: [authorities]
+        summary: Get an authority by name (ROLE_ADMIN)
+        operationId: getAuthority
+        parameters:
+          - name: name
+            in: path
+            required: true
+            description: Authority name, e.g. ROLE_USER or ROLE_ADMIN
+            schema:
+              type: string
+        responses:
+          '200':
+            description: Authority found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Authority'
+          '404':
+            description: Authority not found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Error'
+      delete:
+        tags: [authorities]
+        summary: Delete an authority by name (ROLE_ADMIN)
+        operationId: deleteAuthority
+        parameters:
+          - name: name
+            in: path
+            required: true
+            description: Authority name to delete
+            schema:
+              type: string
+        responses:
+          '204':
+            description: Authority deleted
+
+  components:
+
+    parameters:
+
+      EntityId:
+        name: id
+        in: path
+        required: true
+        description: Numeric entity identifier
+        schema:
+          type: integer
+          format: int64
+
+      BankAccountId:
+        name: id
+        in: path
+        required: true
+        description: >-
+          Bank account identifier. The `x-mcp-inject` marker tells MCPHub to
+          replace this parameter's schema with an `enum` of the bank-account IDs
+          the current user owns (delivered via `GET /api/mcp/session/bootstrap`).
+        schema:
+          type: integer
+          format: int64
+          x-mcp-inject: "bankAccountIds"
+
+      Page:
+        name: page
+        in: query
+        description: Zero-based page index
+        schema:
+          type: integer
+          format: int32
+          default: 0
+          minimum: 0
+
+      Size:
+        name: size
+        in: query
+        description: Number of records per page
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          minimum: 1
+          maximum: 200
+
+      Sort:
+        name: sort
+        in: query
+        description: Sort criteria in the format `property,(asc|desc)`. Multiple values allowed.
+        schema:
+          type: string
+          example: id,asc
+
+    schemas:
+
+      # ── Shared ───────────────────────────────────────────────────────────────
+
+      Error:
+        type: object
+        description: Generic error response
+        properties:
+          error:
+            type: string
+        required:
+          - error
+
+      # ── User DTOs ─────────────────────────────────────────────────────────────
+
+      UserDTO:
+        type: object
+        description: Minimal public user profile
+        properties:
+          id:
+            type: integer
+            format: int64
+          login:
+            type: string
+
+      AdminUserDTO:
+        type: object
+        description: Full user profile visible to the account owner and admins
+        properties:
+          id:
+            type: integer
+            format: int64
+          login:
+            type: string
+            minLength: 1
+            maxLength: 50
+            pattern: '^[a-zA-Z0-9!$&*+=?^_{|}~.\-]+@[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)*$|^[_.@A-Za-z0-9\-]+$'
+          firstName:
+            type: string
+            maxLength: 50
+          lastName:
+            type: string
+            maxLength: 50
+          email:
+            type: string
+            format: email
+            minLength: 5
+            maxLength: 254
+          imageUrl:
+            type: string
+            maxLength: 256
+          activated:
+            type: boolean
+            default: false
+          langKey:
+            type: string
+            minLength: 2
+            maxLength: 10
+          createdBy:
+            type: string
+            readOnly: true
+          createdDate:
+            type: string
+            format: date-time
+            readOnly: true
+          lastModifiedBy:
+            type: string
+            readOnly: true
+          lastModifiedDate:
+            type: string
+            format: date-time
+            readOnly: true
+          authorities:
+            type: array
+            items:
+              type: string
+            description: Set of authority names, e.g. ROLE_USER, ROLE_ADMIN
+        required:
+          - login
+
+      ManagedUserVM:
+        description: AdminUserDTO extended with a plaintext password (for admin user creation)
+        allOf:
+          - $ref: '#/components/schemas/AdminUserDTO'
+          - type: object
+            properties:
+              password:
+                type: string
+                minLength: 4
+                maxLength: 100
+
+      PasswordChangeDTO:
+        type: object
+        properties:
+          currentPassword:
+            type: string
+          newPassword:
+            type: string
+            minLength: 4
+            maxLength: 100
+        required:
+          - currentPassword
+          - newPassword
+
+      # ── Domain entities ───────────────────────────────────────────────────────
+
+      Authority:
+        type: object
+        properties:
+          name:
+            type: string
+            maxLength: 50
+            description: Authority name, e.g. ROLE_USER or ROLE_ADMIN
+        required:
+          - name
+
+      BankAccount:
+        type: object
+        properties:
+          id:
+            type: integer
+            format: int64
+            readOnly: true
+          name:
+            type: string
+          balance:
+            type: number
+            format: double
+            description: Current balance (BigDecimal, precision 21 scale 2)
+          user:
+            $ref: '#/components/schemas/UserDTO'
+          operations:
+            type: array
+            items:
+              $ref: '#/components/schemas/OperationRef'
+            readOnly: true
+        required:
+          - name
+          - balance
+
+      Label:
+        type: object
+        properties:
+          id:
+            type: integer
+            format: int64
+            readOnly: true
+          label:
+            type: string
+            minLength: 3
+        required:
+          - label
+
+      Operation:
+        type: object
+        properties:
+          id:
+            type: integer
+            format: int64
+            readOnly: true
+          date:
+            type: string
+            format: date-time
+          description:
+            type: string
+          amount:
+            type: number
+            format: double
+            description: Transaction amount (BigDecimal, precision 21 scale 2)
+          bankAccount:
+            $ref: '#/components/schemas/BankAccountRef'
+          labels:
+            type: array
+            items:
+              $ref: '#/components/schemas/Label'
+        required:
+          - date
+          - amount
+
+      BankAccountRef:
+        type: object
+        description: Lightweight bank-account reference embedded in Operation (avoids circular nesting)
+        properties:
+          id:
+            type: integer
+            format: int64
+          name:
+            type: string
+
+      OperationRef:
+        type: object
+        description: Lightweight operation reference embedded in BankAccount (avoids circular nesting)
+        properties:
+          id:
+            type: integer
+            format: int64
+          date:
+            type: string
+            format: date-time
+          amount:
+            type: number
+            format: double
+
+    securitySchemes:
+
+      bearerAuth:
+        type: http
+        scheme: bearer
+        bearerFormat: JWT
+        description: JWT obtained from POST /api/authenticate

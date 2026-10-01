@@ -11,6 +11,11 @@ services:
       - SPRING_DATASOURCE_USERNAME=jhipsterSampleApplication
       - SPRING_DATASOURCE_PASSWORD=
       - SPRING_LIQUIBASE_URL=jdbc:postgresql://postgresql:5432/jhipsterSampleApplication
+      # Secrets come from .env (see .env.example); the prod profile refuses to start without them.
+      - JHIPSTER_SECURITY_AUTHENTICATION_JWT_BASE64_SECRET=${JHIPSTER_SECURITY_AUTHENTICATION_JWT_BASE64_SECRET:?set it in .env}
+      - MCP_CONTRACT_HMAC_KEY=${MCP_CONTRACT_HMAC_KEY:?set it in .env}
+      - MCP_CONTRACT_ALLOWED_CALLBACK_HOSTS=${MCP_CONTRACT_ALLOWED_CALLBACK_HOSTS:-}
+      - MCP_CONTRACT_DOMAIN_VERIFICATION_TOKEN=${MCP_CONTRACT_DOMAIN_VERIFICATION_TOKEN:-}
     ports:
       - 127.0.0.1:8080:8080
     healthcheck:
