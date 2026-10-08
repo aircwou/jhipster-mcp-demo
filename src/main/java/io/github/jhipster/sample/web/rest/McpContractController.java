@@ -3,9 +3,11 @@ package io.github.jhipster.sample.web.rest;
 import io.github.jhipster.sample.config.McpContractProperties;
 import io.github.jhipster.sample.security.DomainUserDetailsService;
 import io.github.jhipster.sample.security.mcp.McpAuthCodeStore;
+import io.github.jhipster.sample.service.McpEnumScopesService;
 import io.github.jhipster.sample.service.McpSessionService;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -46,17 +48,20 @@ public class McpContractController {
     private final McpContractProperties properties;
     private final McpAuthCodeStore authCodeStore;
     private final McpSessionService sessionService;
+    private final McpEnumScopesService enumScopesService;
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
 
     public McpContractController(
         McpContractProperties properties,
         McpAuthCodeStore authCodeStore,
         McpSessionService sessionService,
+        McpEnumScopesService enumScopesService,
         AuthenticationManagerBuilder authenticationManagerBuilder
     ) {
         this.properties = properties;
         this.authCodeStore = authCodeStore;
         this.sessionService = sessionService;
+        this.enumScopesService = enumScopesService;
         this.authenticationManagerBuilder = authenticationManagerBuilder;
     }
 
@@ -176,24 +181,16 @@ public class McpContractController {
             LOG.warn("Could not fetch user info for MCP exchange response: {}", e.getMessage());
         }
 
-        return ResponseEntity.ok(
-            Map.of(
-                "user_id",
-                userId.toString(),
-                "email",
-                email,
-                "session_token",
-                session.token(),
-                "expires_in",
-                session.expiresIn(),
-                "roles",
-                roles,
-                "toolScopes",
-                properties.toolScopesForRoles(roles),
-                "display_name",
-                displayName
-            )
-        );
+        Map<String, Object> response = new HashMap<>();
+        response.put("user_id", userId.toString());
+        response.put("email", email);
+        response.put("session_token", session.token());
+        response.put("expires_in", session.expiresIn());
+        response.put("roles", roles);
+        response.put("toolScopes", properties.toolScopesForRoles(roles));
+        response.put("display_name", displayName);
+        putEnumScopes(response, userId);
+        return ResponseEntity.ok(response);
     }
 
     // -----------------------------------------------------------------------
@@ -221,9 +218,13 @@ public class McpContractController {
         int remainingSeconds = (int) Math.max(0, remainingMs / 1000L);
         List<String> roles = sessionService.getUserRoles(session.getUserId());
 
-        return ResponseEntity.ok(
-            Map.of("valid", true, "remaining_seconds", remainingSeconds, "roles", roles, "toolScopes", properties.toolScopesForRoles(roles))
-        );
+        Map<String, Object> response = new HashMap<>();
+        response.put("valid", true);
+        response.put("remaining_seconds", remainingSeconds);
+        response.put("roles", roles);
+        response.put("toolScopes", properties.toolScopesForRoles(roles));
+        putEnumScopes(response, session.getUserId());
+        return ResponseEntity.ok(response);
     }
 
     // -----------------------------------------------------------------------
@@ -272,6 +273,22 @@ public class McpContractController {
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    /**
+     * Adds the record-scope payload LockMCP stores on the session ({@link McpEnumScopesService}).
+     * Never fails the exchange or validate: without it LockMCP keeps what it has (validate) or
+     * refuses scoped calls until a payload arrives (exchange).
+     */
+    private void putEnumScopes(Map<String, Object> response, Long userId) {
+        try {
+            Map<String, Object> scopes = enumScopesService.forUser(userId);
+            if (scopes != null) {
+                response.put("enum_scopes", scopes);
+            }
+        } catch (Exception e) {
+            LOG.warn("Could not build enum_scopes for user {}: {}", userId, e.getMessage());
+        }
+    }
 
     private ResponseEntity<Void> redirect(String url) {
         try {

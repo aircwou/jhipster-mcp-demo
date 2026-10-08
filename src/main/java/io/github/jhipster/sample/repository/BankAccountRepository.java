@@ -17,6 +17,13 @@ public interface BankAccountRepository extends JpaRepository<BankAccount, Long> 
     @Query("select bankAccount from BankAccount bankAccount where bankAccount.user.login = ?#{authentication.name}")
     List<BankAccount> findByUserIsCurrentUser();
 
+    /** Ids of the user's own bank accounts; no security context needed (MCP exchange/validate). */
+    @Query("select bankAccount.id from BankAccount bankAccount where bankAccount.user.id = :userId order by bankAccount.id")
+    List<Long> findIdsByUserId(@Param("userId") Long userId);
+
+    @Query("select bankAccount.id from BankAccount bankAccount order by bankAccount.id")
+    List<Long> findAllIds();
+
     default Optional<BankAccount> findOneWithEagerRelationships(Long id) {
         return this.findOneWithToOneRelationships(id);
     }
